@@ -1,0 +1,82 @@
+import pandas as pd
+import numpy as np
+import pyarrow.parquet as pq
+import concurrent.futures
+
+#  This is sample script that uses concurrent threads to generate and store mock data in Parquet files.
+
+# generate_table1_data and generate_table2_data functions generate mock data for the first and second tables, respectively. 
+# The write_to_parquet_file function writes data to a Parquet file.
+# We then use the concurrent.futures.ThreadPoolExecutor to write data to both tables concurrently. 
+# This makes the script more efficient by allowing both tables to be generated and stored in parallel, instead of sequentially.
+
+# We can make the script configurable by passing below parameters:
+  # schema, 
+  # path for output file, 
+  # number of rows in parquet file
+  # max_workers 
+
+
+# Define the schema for the first table
+table1_schema = {
+    'column1': np.int32,
+    'column2': np.float64,
+    'column3': np.bool_,
+    'column4': np.datetime64,
+}
+
+# Define the schema for the second table
+table2_schema = {
+    'column5': np.int32,
+    'column6': np.float64,
+    'column7': np.bool_,
+    'column8': np.datetime64,
+    'foreign_key': np.int32,
+}
+
+# Define the number of rows to generate for each table
+num_rows_table1 = 1000000
+num_rows_table2 = 500000
+
+# Define the file paths for the output Parquet files
+table1_file_path = 'table1.parquet'
+table2_file_path = 'table2.parquet'
+
+# Define a function to generate mock data for the first table
+def generate_table1_data(num_rows):
+    data = {}
+    for column, dtype in table1_schema.items():
+        data[column] = np.random.rand(num_rows).astype(dtype)
+    return pd.DataFrame(data)
+
+# Define a function to generate mock data for the second table
+def generate_table2_data(num_rows, foreign_keys):
+    data = {}
+    for column, dtype in table2_schema.items():
+        if column == 'foreign_key':
+            data[column] = foreign_keys
+        else:
+            data[column] = np.random.rand(num_rows).astype(dtype)
+    return pd.DataFrame(data)
+
+# Define a function to write data to a Parquet file
+def write_to_parquet_file(file_path, data):
+    table = pa.Table.from_pandas(data)
+    pq.write_table(table, file_path)
+
+# Generate mock data for the first table
+table1_data = generate_table1_data(num_rows_table1)
+
+# Generate foreign keys for the second table based on timestamps
+foreign_keys = np.random.randint(num_rows_table1, size=num_rows_table2)
+
+# Generate mock data for the second table using the foreign keys
+table2_data = generate_table2_data(num_rows_table2, foreign_keys)
+
+# Create a ThreadPoolExecutor to write data to Parquet files concurrently
+with concurrent.futures.ThreadPoolExecutor(max_workers=2) as executor:
+    # Write data for the first table
+    executor.submit(write_to_parquet_file, table1_file_path, table1_data)
+    
+    # Write data for the second table
+    executor.submit(write_to_parquet_file, table2_file_path, table2_data)
