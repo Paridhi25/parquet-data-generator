@@ -1,0 +1,59 @@
+import pandas as pd
+import numpy as np
+
+# Define the schema for the tables
+table1_schema = {
+    'id': int,
+    'timestamp': np.datetime64,
+    'column1': str,
+    'column2': int,
+}
+
+table2_schema = {
+    'id': int,
+    'timestamp': np.datetime64,
+    'column3': float,
+    'column4': bool,
+}
+
+# Define the number of rows to generate
+num_rows = 1000000
+
+# Define the chunk size for writing to the parquet files
+chunk_size = 10000
+
+# Define the correlation between the tables
+correlation = 0.8
+
+# Define the range of timestamps for the data
+start_time = pd.Timestamp('2020-01-01')
+end_time = pd.Timestamp('2020-01-31')
+
+# Generate the data for table 1
+table1_data = pd.DataFrame({
+    'id': np.random.randint(1, num_rows // 10, size=num_rows),
+    'timestamp': pd.date_range(start=start_time, end=end_time, periods=num_rows),
+    'column1': np.random.choice(['A', 'B', 'C'], size=num_rows),
+    'column2': np.random.randint(100, size=num_rows),
+})
+
+# Generate the data for table 2
+table2_data = pd.DataFrame({
+    'id': np.random.randint(1, num_rows // 10, size=num_rows),
+    'timestamp': pd.date_range(start=start_time, end=end_time, periods=num_rows) + pd.Timedelta(days=1),
+    'column3': np.random.uniform(low=0, high=1, size=num_rows),
+    'column4': np.random.choice([True, False], size=num_rows),
+})
+
+# Merge the data frames to create a relationship between the tables
+merged_data = pd.merge(table1_data, table2_data, on=['id'])
+
+# Add correlated noise to the timestamps in table 2
+merged_data['timestamp_y'] = merged_data['timestamp_y'] + pd.to_timedelta(
+    np.random.normal(scale=(1-correlation), size=len(merged_data)), unit='D')
+
+# Write the data frames to parquet files
+table1_data.to_parquet('table1_data.parquet', index=False)
+table2_data.to_parquet('table2_data.parquet', index=False)
+merged_data.to_parquet('merged_data.parquet', index=False)
+
